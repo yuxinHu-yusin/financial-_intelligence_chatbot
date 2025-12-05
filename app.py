@@ -21,15 +21,18 @@ with st.sidebar:
     # Button to check backend health
     if st.button("Check Backend Connection"):
         try:
+            # Access /health route
             response = requests.get(f"{API_URL}/health", timeout=2)
             if response.status_code == 200:
                 data = response.json()
                 doc_count = data.get('total_documents', 'N/A')
-                st.success(f"✅ Online! (Docs: {doc_count})")
+                # Success message now shows document count
+                st.success(f"✅ Backend Online! (Docs: {doc_count})")
             else:
-                st.error(f"❌ Error: {response.status_code}")
+                # Prompt user to check the FastAPI /health route
+                st.error(f"❌ Error: {response.status_code}. Check if the FastAPI /health route has been added.")
         except requests.exceptions.ConnectionError:
-            st.error("❌ Connection Failed. Is 'main.py' running?")
+            st.error("❌ Connection Failed. Confirm `python main.py` is running in the backend terminal.")
 
     st.markdown("---")
     st.markdown("**Model:** Llama 3.2 (3B)")
@@ -40,70 +43,126 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# --- 3. Initialize Chat History ---
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! I am your AI Financial Analyst. Ask me anything about stocks, crypto, or market news! 📈"}
-    ]
-
-# --- 4. Display Chat History ---
+# --- 3. Main Interface ---
 st.title("📈 Financial Intelligence Chatbot")
 st.caption("Powered by RAG (Llama 3.2 + ChromaDB)")
 
-# Render previous messages
+
+# === 💡 Sample Questions ===
+
+# List of sample questions
+sample_questions = [
+    "What are the major risks facing the tech sector right now?",
+    "Summarize the recent earnings report for a major index ETF.",
+    "Explain the concept of 'quantitative easing' in simple terms.",
+    "What is the current consensus on Bitcoin's short-term outlook?",
+]
+
+# Function to handle sample question click: store the question for processing
+def set_sample_prompt(question):
+    st.session_state["prompt_to_process"] = question
+    
+st.subheader("💡 Sample Questions (Click to Ask)")
+
+# Display buttons in columns
+cols = st.columns(4) 
+for col, question in zip(cols, sample_questions):
+    with col:
+        # Use on_click to update the session state
+        st.button(
+            question, 
+            on_click=set_sample_prompt, 
+            args=(question,), 
+            key=f"sample_btn_{question[:10]}", # Ensure key is unique
+            use_container_width=True
+        )
+
+st.markdown("---") 
+
+
+# === Chat Logic ===
+
+# Initialize chat history and prompt processor state
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! I am your AI Financial Analyst. Ask me anything about stocks, crypto, or market news!"}]
+if "prompt_to_process" not in st.session_state:
+    st.session_state["prompt_to_process"] = None
+
+
+# Display chat messages from history on app rerun
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- 5. Handle User Input ---
-if prompt := st.chat_input("Ask a question (e.g., 'What is the news on Apple?')..."):
-    
-    # Display user message immediately
+# 1. Check for user input from the chat box
+# If user types in the chat input, set the prompt_to_process
+if chat_input_value := st.chat_input("Ask a financial question about markets, stocks, or crypto...", key="chat_input"):
+    st.session_state["prompt_to_process"] = chat_input_value
+
+# 2. Get the prompt to process (either from chat input or sample button)
+prompt = st.session_state.pop("prompt_to_process", None)
+
+# 3. Execute the RAG logic if a prompt is available
+if prompt:
+# <<< MODIFICATION END: Unified Input Handling Logic >>>
+    # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+    
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Display AI response
+    # API Request Body
+    request_body = {
+        "question": prompt,
+        "n_results": 5,
+        "model": "llama3.2:3b"
+    }
+
+    # API Call and Response Handling
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
         
-        with st.spinner("🔍 Searching documents & Analyzing..."):
-            try:
+        try:
+            with st.spinner("🔍 Searching documents and analyzing..."):
                 # Send request to FastAPI backend
-                payload = {"question": prompt, "n_results": 4}
-                response = requests.post(f"{API_URL}/query", json=payload, timeout=60)
+                response = requests.post(f"{API_URL}/query", json=request_body, timeout=60) 
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    answer = data["answer"]
-                    sources = data["sources"]
-                    
-                    # Streaming effect for the answer
-                    for chunk in answer.split():
-                        full_response += chunk + " "
-                        time.sleep(0.02)
-                        message_placeholder.markdown(full_response + "▌")
-                    
-                    # Final update without cursor
-                    message_placeholder.markdown(full_response)
-                    
-                    # Display Source Documents in an expandable section
+            if response.status_code == 200:
+                data = response.json()
+                answer = data.get('answer', 'No answer received.')
+                sources = data.get('sources', [])
+                
+                # Simulate streaming response
+                for chunk in answer.split():
+                    full_response += chunk + " "
+                    time.sleep(0.02)
+                    message_placeholder.markdown(full_response + "▌")
+                
+                # Final display of the complete answer
+                message_placeholder.markdown(full_response)
+                
+                # Display Source Documents in an expandable section
+                if sources:
                     with st.expander("📚 View Source Documents"):
                         for idx, source in enumerate(sources):
-                            st.markdown(f"**Source {idx+1}** (Relevance: {source['relevance_score']:.1f}%)")
+                            score = source.get('relevance_score', 0.0)
+                            text = source.get('text', 'Content missing')
+                            metadata = source.get('metadata', {})
+
+                            st.markdown(f"**Source Document {idx+1}** (Relevance: {score:.1f}%)")
                             # Truncate text to first 300 characters
-                            st.info(source['text'][:300] + "...") 
-                            st.caption(f"Metadata: {source['metadata']}")
+                            st.info(text[:300] + "...") 
+                            st.caption(f"Metadata: {metadata}")
                             st.markdown("---")
                             
-                    # Save AI response to session history
-                    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                    
-                else:
-                    st.error(f"Backend Error: {response.text}")
-                    
-            except requests.exceptions.ConnectionError:
-                st.error("❌ Could not connect to backend. Please ensure `python main.py` is running in another terminal.")
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
+                # Save AI response to session history
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                
+            else:
+                st.error(f"Backend Error: {response.text}")
+                
+        except requests.exceptions.ConnectionError:
+            st.error("❌ Could not connect to backend. Please ensure `python main.py` is running in another terminal.")
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {str(e)}")

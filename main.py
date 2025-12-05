@@ -22,7 +22,7 @@ app.add_middleware(
 print("--- [System] Starting Backend (Lightweight Mode) ---")
 
 print("1. Loading Embedding Model...")
-# 这个模型很小(90MB)，一般不会卡死电脑
+# Small model 90MB
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 print("   -> Embedding Model loaded.")
 
@@ -38,7 +38,6 @@ except Exception as e:
 class QueryRequest(BaseModel):
     question: str
     n_results: int = 5
-    # ⚠️ 修改这里：默认使用 3.2 3B 模型，防止电脑卡死
     model: str = "llama3.2:3b" 
 
 class SourceDocument(BaseModel):
@@ -64,7 +63,6 @@ def retrieve_documents(question: str, n: int):
 def generate_answer(question: str, context: str, model_name: str):
     prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
     try:
-        # 这里的调用是最吃内存的
         response = ollama.chat(model=model_name, messages=[
             {'role': 'user', 'content': prompt},
         ])
@@ -73,6 +71,20 @@ def generate_answer(question: str, context: str, model_name: str):
         return f"Error: {str(e)}"
 
 # --- 5. API ---
+# Add /health check endpoint to resolve 404 error from frontend
+@app.get("/health")
+def health_check():
+    """Returns the status and current document count of the vector store."""
+    try:
+        # Get the document count
+        count = collection.count()
+    except Exception:
+        # If DB connection fails (unlikely if initialization worked), return 0
+        count = 0 
+        
+    # The frontend expects a 200 OK status and the document count
+    return {"status": "ok", "total_documents": count}
+
 @app.post("/query", response_model=QueryResponse)
 def query_rag(request: QueryRequest):
     print(f"\n[Query] {request.question}")
@@ -90,7 +102,7 @@ def query_rag(request: QueryRequest):
             sources.append(SourceDocument(text=doc, metadata=meta, relevance_score=score))
             context_text += f"- {doc}\n"
 
-    # 2. Generate (使用小模型)
+    # 2. Generate 
     print(f"[LLM] Generating with {request.model}...")
     answer = generate_answer(request.question, context_text, request.model)
     

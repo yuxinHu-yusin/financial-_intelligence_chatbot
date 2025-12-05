@@ -1,0 +1,20 @@
+# Backend (FastAPI) Dependencies
+
+fastapi
+uvicorn
+pydantic
+requests
+
+# RAG Core Dependencies
+
+chromadb
+sentence-transformers
+
+# LLM Engine Connectivity
+
+ollama
+
+# Frontend (Streamlit) Dependencies
+
+streamlit
+
