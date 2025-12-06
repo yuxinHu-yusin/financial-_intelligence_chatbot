@@ -6,7 +6,7 @@ FROM ollama/ollama
 
 # Install Python and necessary system tools, including python3-venv for virtual environments
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip python3-venv git --no-install-recommends && \
+    apt-get install -y python3 python3-pip python3-venv git build-essential --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # --- Fix for 'externally-managed-environment' (PEP 668) ---
@@ -22,8 +22,9 @@ WORKDIR /app
 
 # Copy dependency file and install Python dependencies into the venv
 COPY requirements.txt .
+
 # Now 'pip' refers to the pip inside the venv, which avoids the system conflict
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --timeout 600
 
 # Copy the entire project (including main.py, app.py, README.md, and the chroma_db folder)
 COPY . /app
