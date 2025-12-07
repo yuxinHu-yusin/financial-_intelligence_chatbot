@@ -52,10 +52,10 @@ st.caption("Powered by RAG (Llama 3.2 + ChromaDB)")
 
 # List of sample questions
 sample_questions = [
-    "What are the major risks facing the tech sector right now?",
-    "Summarize the recent earnings report for a major index ETF.",
-    "Explain the concept of 'quantitative easing' in simple terms.",
-    "What is the current consensus on Bitcoin's short-term outlook?",
+    "What earnings surprises were reported recently?",
+    "What recent news has been reported about Microsoft's AI initiatives?",
+    "What are the trending topics about investing right now?",
+    "How are Reddit users discussing inflation concerns lately?",
 ]
 
 # Function to handle sample question click: store the question for processing
