@@ -61,14 +61,53 @@ def retrieve_documents(question: str, n: int):
     return results
 
 def generate_answer(question: str, context: str, model_name: str):
-    prompt = f"Context: {context}\nQuestion: {question}\nAnswer:"
+    prompt = f"""
+# CONTEXT #
+You are the generation component in a Retrieval-Augmented Generation (RAG) system.
+The user's query has been matched with the most relevant information from a financial knowledge base.
+
+# OBJECTIVE #
+Answer the user's question accurately by synthesizing information from the retrieved content.
+Present the answer as inherent knowledge and do NOT reveal or mention the retrieval process.
+
+# STYLE #
+Clear, structured explanatory prose.
+Match the technical depth of the user's question.
+Typically 2–4 concise paragraphs unless otherwise required.
+
+# TONE #
+Confident, authoritative, and helpful.
+Avoid hedging language such as "might", "possibly", or "it seems" unless uncertainty is explicitly justified.
+
+# AUDIENCE #
+End users seeking seamless financial analysis without knowledge of the backend system.
+
+# RESPONSE #
+Context:
+{context}
+
+Query:
+{question}
+
+Rules:
+- Never mention "documents", "sources", "context", "database", or any retrieval-related terms.
+- Present all information as direct knowledge.
+- Only use facts contained in the provided context.
+- If relevant information is missing, respond exactly with:
+  "I don't have specific information about this based on the available data."
+- Synthesize across all content. Do NOT summarize document-by-document.
+
+Answer:
+"""
+
     try:
-        response = ollama.chat(model=model_name, messages=[
-            {'role': 'user', 'content': prompt},
-        ])
-        return response['message']['content']
+        response = ollama.chat(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response["message"]["content"]
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error generating answer: {str(e)}"
 
 # --- 5. API ---
 # Add /health check endpoint to resolve 404 error from frontend
