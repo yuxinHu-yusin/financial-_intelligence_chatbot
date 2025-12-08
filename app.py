@@ -53,9 +53,9 @@ st.caption("Powered by RAG (Llama 3.2 + ChromaDB)")
 # List of sample questions
 sample_questions = [
     "What earnings surprises were reported recently?",
-    "What recent news has been reported about Microsoft's AI initiatives?",
+    "Has there been any significant news about AMD's chip developments?",
+    "Has JPMorgan Chase made any major announcements in recent weeks?",
     "What are the trending topics about investing right now?",
-    "How are Reddit users discussing inflation concerns lately?",
 ]
 
 # Function to handle sample question click: store the question for processing
@@ -163,6 +163,6 @@ if prompt:
                 st.error(f"Backend Error: {response.text}")
                 
         except requests.exceptions.ConnectionError:
-            st.error("❌ Could not connect to backend. Please ensure `python main.py` is running in another terminal.")
+            st.error("❌ Could not connect to backend. Please ensure python main.py is running in another terminal.")
         except Exception as e:
             st.error(f"An unexpected error occurred: {str(e)}")
