@@ -52,10 +52,10 @@ st.caption("Powered by RAG (Llama 3.2 + ChromaDB)")
 
 # List of sample questions
 sample_questions = [
-    "What earnings surprises were reported recently?",
-    "Has there been any significant news about AMD's chip developments?",
+    "What do investors think about the current crypto market conditions?",
+    "What are people saying about the S&P 500 performance lately?",
+    "What are investors saying about the current state of the real estate market?",
     "Has JPMorgan Chase made any major announcements in recent weeks?",
-    "What are the trending topics about investing right now?",
 ]
 
 # Function to handle sample question click: store the question for processing
